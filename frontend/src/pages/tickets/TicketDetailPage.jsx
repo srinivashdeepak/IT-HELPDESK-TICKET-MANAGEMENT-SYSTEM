@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ticketService } from '../../services/ticketService';
 import { userService } from '../../services/userService';
+import { attachmentService } from '../../services/attachmentService';
+import { feedbackService } from '../../services/feedbackService';
 import { useAuth } from '../../context/AuthContext';
 import StatusBadge from '../../components/StatusBadge';
 import PriorityBadge from '../../components/PriorityBadge';
+import SlaBadge from '../../components/SlaBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const TicketDetailPage = () => {
@@ -13,9 +16,26 @@ const TicketDetailPage = () => {
 
   const [ticketData, setTicketData] = useState(null);
   const [agents, setAgents] = useState([]);
+  const [agentWorkloads, setAgentWorkloads] = useState([]);
+  const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
+
+  // Attachments State
+  const [fileToUpload, setFileToUpload] = useState(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+
+  // CSAT Feedback State
+  const [feedback, setFeedback] = useState(null);
+  const [starRating, setStarRating] = useState(5);
+  const [feedbackComments, setFeedbackComments] = useState('');
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+
+  // Reopen Modal State
+  const [showReopenModal, setShowReopenModal] = useState(false);
+  const [reopenReason, setReopenReason] = useState('');
+  const [reopening, setReopening] = useState(false);
 
   // Comment Form State
   const [commentText, setCommentText] = useState('');
@@ -34,8 +54,10 @@ const TicketDetailPage = () => {
 
   useEffect(() => {
     loadTicket();
+    loadAttachments();
+    loadFeedback();
     if (isAgent || isAdmin) {
-      loadAgents();
+      loadAgentsAndWorkloads();
     }
   }, [id]);
 
@@ -58,17 +80,58 @@ const TicketDetailPage = () => {
     }
   };
 
-  const loadAgents = async () => {
+  const loadAttachments = async () => {
     try {
-      const res = await userService.getAgents();
-      if (res.success) {
-        setAgents(res.data);
-        if (res.data.length > 0) {
-          setSelectedAgentId(res.data[0].id);
+      const res = await attachmentService.getTicketAttachments(id);
+      if (res.data) setAttachments(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadFeedback = async () => {
+    try {
+      const res = await feedbackService.getFeedback(id);
+      if (res.data) setFeedback(res.data);
+    } catch (e) {
+      // Feedback might not exist yet
+    }
+  };
+
+  const loadAgentsAndWorkloads = async () => {
+    try {
+      const [agentsRes, workloadsRes] = await Promise.all([
+        userService.getAgents(),
+        userService.getWorkloads(),
+      ]);
+      if (agentsRes.success) {
+        setAgents(agentsRes.data);
+        if (agentsRes.data.length > 0 && !selectedAgentId) {
+          setSelectedAgentId(agentsRes.data[0].id);
         }
+      }
+      if (workloadsRes.data) {
+        setAgentWorkloads(workloadsRes.data);
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    e.preventDefault();
+    if (!fileToUpload) return;
+    try {
+      setUploadingFile(true);
+      setError('');
+      await attachmentService.uploadAttachment(id, fileToUpload);
+      setActionSuccess('File uploaded successfully');
+      setFileToUpload(null);
+      loadAttachments();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to upload file');
+    } finally {
+      setUploadingFile(false);
     }
   };
 
@@ -141,6 +204,7 @@ const TicketDetailPage = () => {
         setActionSuccess('Ticket assigned successfully');
         setAssignmentNotes('');
         loadTicket();
+        loadAgentsAndWorkloads();
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to assign ticket');
@@ -156,9 +220,46 @@ const TicketDetailPage = () => {
       if (res.success) {
         setActionSuccess('Ticket assigned to you');
         loadTicket();
+        loadAgentsAndWorkloads();
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to self-assign ticket');
+    }
+  };
+
+  const handleReopenTicket = async (e) => {
+    e.preventDefault();
+    if (!reopenReason.trim()) return;
+    try {
+      setReopening(true);
+      setError('');
+      await ticketService.reopenTicket(id, reopenReason.trim());
+      setShowReopenModal(false);
+      setReopenReason('');
+      setActionSuccess('Ticket has been reopened and placed in progress.');
+      loadTicket();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to reopen ticket');
+    } finally {
+      setReopening(false);
+    }
+  };
+
+  const handleSubmitFeedback = async (e) => {
+    e.preventDefault();
+    try {
+      setSubmittingFeedback(true);
+      setError('');
+      const res = await feedbackService.submitFeedback(id, {
+        rating: starRating,
+        comments: feedbackComments.trim(),
+      });
+      setFeedback(res.data);
+      setActionSuccess('Thank you for rating our IT support!');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to submit feedback');
+    } finally {
+      setSubmittingFeedback(false);
     }
   };
 
@@ -177,6 +278,7 @@ const TicketDetailPage = () => {
   }
 
   const { ticket, comments = [], history = [] } = ticketData;
+  const isResolvedOrClosed = ticket.status === 'RESOLVED' || ticket.status === 'CLOSED';
 
   return (
     <div>
@@ -192,12 +294,28 @@ const TicketDetailPage = () => {
           <div className="d-flex align-items-center gap-3 flex-wrap">
             <span className="ticket-code fs-5">{ticket.ticketCode}</span>
             <h4 className="fw-bold text-dark mb-0">{ticket.title}</h4>
+            {ticket.reopened && (
+              <span className="badge bg-warning text-dark border">
+                <i className="bi bi-arrow-repeat me-1"></i> REOPENED
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <SlaBadge status={ticket.slaStatus} deadline={ticket.resolutionDeadline} isBreached={ticket.slaBreached} />
           <StatusBadge status={ticket.status} />
           <PriorityBadge priority={ticket.priority} />
+
+          {/* Reopen Action Button */}
+          {isResolvedOrClosed && (
+            <button
+              className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1"
+              onClick={() => setShowReopenModal(true)}
+            >
+              <i className="bi bi-arrow-counterclockwise"></i> Reopen Ticket
+            </button>
+          )}
         </div>
       </div>
 
@@ -216,7 +334,7 @@ const TicketDetailPage = () => {
       )}
 
       <div className="row g-4">
-        {/* Left Column: Details, Comments, Timeline */}
+        {/* Left Column: Details, Attachments, Comments, Timeline */}
         <div className="col-12 col-lg-8">
           {/* Issue Description Card */}
           <div className="card-enterprise mb-4">
@@ -235,6 +353,65 @@ const TicketDetailPage = () => {
             </div>
           </div>
 
+          {/* Attachments Section */}
+          <div className="card-enterprise mb-4">
+            <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
+              <span className="fw-semibold text-dark small">
+                <i className="bi bi-paperclip me-1"></i> Files & Screenshots ({attachments.length})
+              </span>
+            </div>
+            <div className="p-3">
+              {attachments.length > 0 ? (
+                <div className="row g-2 mb-3">
+                  {attachments.map((att) => {
+                    const isImg = att.fileType?.startsWith('image/');
+                    return (
+                      <div key={att.id} className="col-md-6">
+                        <div className="border rounded p-2 d-flex align-items-center justify-content-between bg-light">
+                          <div className="d-flex align-items-center gap-2 text-truncate me-2">
+                            <i className={`bi ${isImg ? 'bi-image text-primary' : 'bi-file-earmark-text text-secondary'} fs-4`}></i>
+                            <div className="text-truncate">
+                              <div className="small fw-semibold text-truncate" title={att.fileName}>{att.fileName}</div>
+                              <div className="text-muted" style={{ fontSize: '0.7rem' }}>
+                                {(att.fileSize / 1024).toFixed(1)} KB • {att.uploadedByName}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            className="btn btn-sm btn-outline-secondary py-1 px-2"
+                            onClick={() => attachmentService.downloadFile(att.id, att.fileName)}
+                            title="Download File"
+                          >
+                            <i className="bi bi-download"></i>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-muted small mb-3">No attachments uploaded for this ticket yet.</p>
+              )}
+
+              {/* Upload Input */}
+              <form onSubmit={handleFileUpload} className="d-flex gap-2 align-items-center">
+                <input
+                  type="file"
+                  className="form-control form-control-sm"
+                  onChange={(e) => setFileToUpload(e.target.files[0])}
+                  disabled={uploadingFile}
+                />
+                <button
+                  type="submit"
+                  className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+                  disabled={!fileToUpload || uploadingFile}
+                >
+                  <i className="bi bi-upload"></i> {uploadingFile ? 'Uploading...' : 'Upload'}
+                </button>
+              </form>
+            </div>
+          </div>
+
           {/* Resolution Notes Card (if resolved/closed) */}
           {ticket.resolutionNotes && (
             <div className="card-enterprise mb-4 border-success-subtle bg-success-subtle bg-opacity-10">
@@ -250,6 +427,71 @@ const TicketDetailPage = () => {
                 <p className="mb-0 text-dark small" style={{ whiteSpace: 'pre-line' }}>
                   {ticket.resolutionNotes}
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* CSAT Star Rating / Feedback Widget */}
+          {isResolvedOrClosed && (
+            <div className="card-enterprise mb-4 border-primary-subtle">
+              <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
+                <span className="fw-semibold text-dark small">
+                  <i className="bi bi-star-fill text-warning me-1"></i> Employee Satisfaction & Feedback
+                </span>
+              </div>
+              <div className="p-4">
+                {feedback ? (
+                  <div>
+                    <div className="d-flex align-items-center gap-2 mb-2">
+                      <div className="star-rating">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <i
+                            key={s}
+                            className={`bi ${s <= feedback.rating ? 'bi-star-fill' : 'bi-star'}`}
+                          ></i>
+                        ))}
+                      </div>
+                      <span className="fw-bold small">{feedback.rating} / 5 Stars</span>
+                    </div>
+                    {feedback.comments && (
+                      <p className="text-secondary small fst-italic mb-2">"{feedback.comments}"</p>
+                    )}
+                    <span className="text-muted" style={{ fontSize: '0.75rem' }}>
+                      Submitted by {feedback.employeeName} on {new Date(feedback.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                ) : isEmployee ? (
+                  <form onSubmit={handleSubmitFeedback}>
+                    <p className="small text-muted mb-2">How satisfied were you with the support provided for this issue?</p>
+                    <div className="star-rating mb-3">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <i
+                          key={s}
+                          className={`bi ${s <= starRating ? 'bi-star-fill' : 'bi-star'}`}
+                          onClick={() => setStarRating(s)}
+                        ></i>
+                      ))}
+                    </div>
+                    <div className="mb-3">
+                      <textarea
+                        className="form-control form-control-sm"
+                        rows="2"
+                        placeholder="Additional comments or appreciation (optional)..."
+                        value={feedbackComments}
+                        onChange={(e) => setFeedbackComments(e.target.value)}
+                      ></textarea>
+                    </div>
+                    <button
+                      type="submit"
+                      className="btn btn-sm btn-primary-enterprise"
+                      disabled={submittingFeedback}
+                    >
+                      {submittingFeedback ? 'Submitting...' : 'Submit Rating'}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="text-muted small">No feedback submitted yet by the employee.</div>
+                )}
               </div>
             </div>
           )}
@@ -431,8 +673,10 @@ const TicketDetailPage = () => {
                   <div className="small text-dark fw-medium">{new Date(ticket.createdAt).toLocaleDateString()}</div>
                 </div>
                 <div className="col-6">
-                  <div className="text-muted small">Last Activity</div>
-                  <div className="small text-dark fw-medium">{new Date(ticket.updatedAt).toLocaleDateString()}</div>
+                  <div className="text-muted small">Resolution Due</div>
+                  <div className="small text-dark fw-medium">
+                    {ticket.resolutionDeadline ? new Date(ticket.resolutionDeadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }) : 'N/A'}
+                  </div>
                 </div>
               </div>
             </div>
@@ -535,16 +779,48 @@ const TicketDetailPage = () => {
             </div>
           )}
 
-          {/* Assign / Delegate Specialist (Agent/Admin) */}
+          {/* Smart Agent Assignment (Agent/Admin) */}
           {(isAgent || isAdmin) && (
             <div className="card-enterprise">
               <div className="p-3 border-bottom bg-light">
-                <h6 className="fw-bold mb-0 text-dark small">Delegate / Assign Specialist</h6>
+                <h6 className="fw-bold mb-0 text-dark small">
+                  <i className="bi bi-cpu me-1"></i> Smart Agent Assignment
+                </h6>
               </div>
               <div className="p-3">
+                {agentWorkloads.length > 0 && (
+                  <div className="mb-3">
+                    <label className="form-label small text-muted mb-1">Workload Recommendations</label>
+                    <div className="d-flex flex-column gap-2 mb-2">
+                      {agentWorkloads.slice(0, 3).map((w) => (
+                        <div
+                          key={w.id}
+                          onClick={() => setSelectedAgentId(w.id)}
+                          className={`p-2 border rounded cursor-pointer d-flex justify-content-between align-items-center ${
+                            selectedAgentId === w.id ? 'border-primary bg-primary-subtle bg-opacity-25' : 'bg-light'
+                          }`}
+                          style={{ cursor: 'pointer', fontSize: '0.8rem' }}
+                        >
+                          <div>
+                            <div className="fw-semibold text-dark">
+                              {w.fullName} {w.recommended && <span className="badge bg-success-subtle text-success border ms-1">Recommended</span>}
+                            </div>
+                            <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                              {w.activeTicketCount} active tickets • Rating: {w.averageRating}★
+                            </div>
+                          </div>
+                          <span className={`badge ${w.availabilityStatus === 'AVAILABLE' ? 'bg-success' : 'bg-secondary'}`}>
+                            {w.availabilityStatus}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <form onSubmit={handleAssignTicket}>
                   <div className="mb-2">
-                    <label className="form-label small text-muted">Support Specialist</label>
+                    <label className="form-label small text-muted">Select Specialist</label>
                     <select
                       className="form-select form-select-sm"
                       value={selectedAgentId}
@@ -583,6 +859,46 @@ const TicketDetailPage = () => {
           )}
         </div>
       </div>
+
+      {/* Reopen Ticket Modal */}
+      {showReopenModal && (
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <form onSubmit={handleReopenTicket}>
+                <div className="modal-header">
+                  <h5 className="modal-title fw-bold">Reopen Ticket {ticket.ticketCode}</h5>
+                  <button type="button" className="btn-close" onClick={() => setShowReopenModal(false)}></button>
+                </div>
+                <div className="modal-body">
+                  <div className="alert alert-warning py-2 small mb-3">
+                    <i className="bi bi-info-circle me-1"></i> Reopening this ticket will transition its status back to <strong>IN_PROGRESS</strong> and refresh the SLA turnaround deadline.
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold">Mandatory Reopening Reason *</label>
+                    <textarea
+                      className="form-control"
+                      rows="4"
+                      placeholder="Explain why the previous resolution was incomplete or if the symptom recurred..."
+                      value={reopenReason}
+                      onChange={(e) => setReopenReason(e.target.value)}
+                      required
+                    ></textarea>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowReopenModal(false)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-warning btn-sm" disabled={reopening || !reopenReason.trim()}>
+                    {reopening ? 'Reopening...' : 'Confirm Reopen'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

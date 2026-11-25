@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -39,6 +40,15 @@ public class DataInitializer implements CommandLineRunner {
     private TicketHistoryRepository historyRepository;
 
     @Autowired
+    private SlaRuleRepository slaRuleRepository;
+
+    @Autowired
+    private KbArticleRepository kbArticleRepository;
+
+    @Autowired
+    private AnnouncementRepository announcementRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Override
@@ -59,7 +69,13 @@ public class DataInitializer implements CommandLineRunner {
         Category catSecurity = initCategory("Security & Compliance", "Phishing alerts, antivirus notifications, device compliance checks");
         Category catCloud = initCategory("Cloud & Infrastructure", "AWS/Azure staging access, Docker environments, internal test servers");
 
-        // 3. Initialize Users
+        // 3. Initialize SLA Rules
+        initSlaRule(TicketPriority.CRITICAL, 1, 4, "admin@company.com");
+        initSlaRule(TicketPriority.HIGH, 4, 12, "admin@company.com");
+        initSlaRule(TicketPriority.MEDIUM, 8, 48, null);
+        initSlaRule(TicketPriority.LOW, 24, 96, null);
+
+        // 4. Initialize Users
         User admin = initUser("admin", "admin@company.com", "Alex Mercer", "IT Operations", "+1-555-0101", adminRole);
         User agentSarah = initUser("agent.sarah", "sarah.jenkins@company.com", "Sarah Jenkins", "IT Support Tier 2", "+1-555-0102", agentRole);
         User agentMarcus = initUser("agent.marcus", "marcus.chen@company.com", "Marcus Chen", "Network & Infrastructure", "+1-555-0103", agentRole);
@@ -67,7 +83,7 @@ public class DataInitializer implements CommandLineRunner {
         User empElena = initUser("emp.elena", "elena.rodriguez@company.com", "Elena Rodriguez", "Product & Design", "+1-555-0105", employeeRole);
         User empPriya = initUser("emp.priya", "priya.sharma@company.com", "Priya Sharma", "Human Resources", "+1-555-0106", employeeRole);
 
-        // 4. Initialize Realistic Enterprise Tickets if none exist
+        // 5. Initialize Realistic Enterprise Tickets if none exist
         if (ticketRepository.count() == 0) {
             logger.info("Seeding realistic sample tickets, activity logs, and comments...");
 
@@ -174,6 +190,96 @@ public class DataInitializer implements CommandLineRunner {
             recordComment(t6, agentMarcus, "Incident response completed. SOC report filed and threat indicators updated in SIEM.", false, LocalDateTime.now().minusDays(2));
         }
 
+        // Backfill SLA fields for tickets that have null resolutionDeadline
+        List<Ticket> existing = ticketRepository.findAll();
+        for (Ticket t : existing) {
+            boolean changed = false;
+            if (t.getResolutionDeadline() == null) {
+                int respHours = switch (t.getPriority()) {
+                    case CRITICAL -> 1;
+                    case HIGH -> 4;
+                    case MEDIUM -> 8;
+                    case LOW -> 24;
+                };
+                int resHours = switch (t.getPriority()) {
+                    case CRITICAL -> 4;
+                    case HIGH -> 12;
+                    case MEDIUM -> 48;
+                    case LOW -> 96;
+                };
+                LocalDateTime created = t.getCreatedAt() != null ? t.getCreatedAt() : LocalDateTime.now();
+                t.setResponseDeadline(created.plusHours(respHours));
+                t.setResolutionDeadline(created.plusHours(resHours));
+                t.setSlaStatus(SlaStatus.WITHIN_SLA);
+                changed = true;
+            }
+            if (t.getSlaStatus() == null) {
+                t.setSlaStatus(SlaStatus.WITHIN_SLA);
+                changed = true;
+            }
+            if (changed) {
+                ticketRepository.save(t);
+            }
+        }
+
+        // 6. Initialize Knowledge Base Articles if empty
+        if (kbArticleRepository.count() == 0) {
+            logger.info("Seeding enterprise Knowledge Base articles...");
+
+            initKbArticle(
+                    "Self-Service Password and Okta MFA Reset Guide",
+                    "## Self-Service Password Reset\n\n1. Visit **https://sso.company.com** and click **Need help signing in?**\n2. Select **Reset Password**.\n3. Enter your corporate email address (`firstname.lastname@company.com`).\n4. Check your recovery phone for the 6-digit SMS verification code.\n5. Choose a password adhering to policy: **Minimum 14 characters**, including uppercase, lowercase, numbers, and symbols.\n\n## Re-enrolling Okta Verify MFA\n\nIf you have a new mobile device:\n- Open your Okta dashboard on your registered workstation.\n- Navigate to **Settings** > **Extra Verification**.\n- Click **Set up** next to Okta Verify and scan the generated QR code on your new smartphone.\n- If locked out completely, submit an Access & Identity ticket with a contact callback number.",
+                    catAccess,
+                    admin
+            );
+
+            initKbArticle(
+                    "Troubleshooting Corporate Wi-Fi and GlobalProtect VPN Disconnections",
+                    "## Step 1: Verify 802.1X Corporate Certificate\n- Ensure you are connected to SSID **'Corp-Secure'** rather than 'Guest'.\n- If prompted for credentials, re-enter your domain username (without `@company.com`) and current password.\n\n## Step 2: GlobalProtect VPN Gateway Selection\n- Open GlobalProtect from your system tray.\n- Click the **Gear icon** > **Settings** > **Gateways**.\n- Switch Gateway from **Auto-Detect** to your nearest geographic region (e.g., `us-east-vpn.company.com` or `eu-west-vpn.company.com`).\n\n## Step 3: Flush DNS Cache\n- **Windows**: Open PowerShell as administrator and run `Clear-DnsClientCache` followed by `ipconfig /renew`.\n- **macOS**: In Terminal, run `sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder`.\n\nIf the issue persists, capture your ping loss rate to `10.0.0.1` and attach the output to your ticket.",
+                    catNetwork,
+                    agentMarcus
+            );
+
+            initKbArticle(
+                    "Resolving High CPU Usage and Overheating on MacBook Pro (M-Series)",
+                    "## Symptoms\n- Fans spinning at maximum RPM.\n- Battery draining quickly while plugged into a dock.\n- `kernel_task` utilizing > 200% CPU in Activity Monitor.\n\n## Recommended Remediation Steps\n1. **Check Dock Power Delivery**: Ensure your Thunderbolt dock provides at least 85W-100W PD. If using 4K dual displays, plug your official Apple MagSafe / 96W charger directly into the laptop rather than drawing power through the dock.\n2. **Avoid Left-Side USB-C Charging Under Load**: On M-series MacBooks, intense charging through left ports near thermal sensors can trigger `kernel_task` thermal throttling. Plug charging into the right-side port if using USB-C.\n3. **Close Resource Heavy Browser Hardware Acceleration**: In Chrome/Brave Settings > System, verify GPU acceleration does not conflict with displaylink drivers.\n4. **Reset SMC / Power Controller**: Power off, hold Power Button for 10 seconds, and reboot.",
+                    catHardware,
+                    agentSarah
+            );
+
+            initKbArticle(
+                    "Developer Environment Setup: Docker Desktop & Proxy Configuration",
+                    "## Docker Desktop Enterprise Licensing\nCorporate Docker licenses are managed via Jamf / Intune. If you encounter a license warning:\n1. Quit Docker Desktop.\n2. Ensure you are signed in to Docker Desktop using your SSO domain account.\n\n## Configuring Corporate Proxy Settings\nAdd the following to your `~/.docker/config.json`:\n```json\n{\n  \"proxies\": {\n    \"default\": {\n      \"httpProxy\": \"http://proxy.company.internal:8080\",\n      \"httpsProxy\": \"http://proxy.company.internal:8080\",\n      \"noProxy\": \"localhost,127.0.0.1,.company.internal\"\n    }\n  }\n}\n```\n\nRestart the Docker daemon to apply.",
+                    catSoftware,
+                    agentMarcus
+            );
+        }
+
+        // 7. Initialize Announcements if empty
+        if (announcementRepository.count() == 0) {
+            logger.info("Seeding system announcements...");
+
+            Announcement a1 = new Announcement(
+                    "Scheduled Maintenance: Okta SSO & Active Directory Sync",
+                    "Our Identity and Access team will be performing quarterly maintenance on the Okta authentication gateway this Saturday between 02:00 AM and 04:00 AM UTC. Intermittent login prompts may occur.",
+                    AnnouncementPriority.WARNING,
+                    LocalDateTime.now().minusHours(6),
+                    LocalDateTime.now().plusDays(4),
+                    admin
+            );
+            announcementRepository.save(a1);
+
+            Announcement a2 = new Announcement(
+                    "Security Notice: New Phishing Campaign Targeting Expense Reports",
+                    "Information Security has identified emails with spoofed 'Expensify Approval' attachments. Remember that IT and Finance will never ask for your password via email.",
+                    AnnouncementPriority.CRITICAL,
+                    LocalDateTime.now().minusHours(24),
+                    LocalDateTime.now().plusDays(7),
+                    admin
+            );
+            announcementRepository.save(a2);
+        }
+
         logger.info("Helpdesk system seed data initialization complete.");
     }
 
@@ -183,6 +289,20 @@ public class DataInitializer implements CommandLineRunner {
 
     private Category initCategory(String name, String desc) {
         return categoryRepository.findByName(name).orElseGet(() -> categoryRepository.save(new Category(name, desc)));
+    }
+
+    private void initSlaRule(TicketPriority priority, int responseHours, int resolutionHours, String escalationEmail) {
+        if (!slaRuleRepository.existsByPriority(priority)) {
+            SlaRule rule = new SlaRule(priority, responseHours, resolutionHours, escalationEmail);
+            slaRuleRepository.save(rule);
+        }
+    }
+
+    private void initKbArticle(String title, String content, Category category, User author) {
+        KbArticle article = new KbArticle(title, content, category, author);
+        article.setHelpfulCount(5);
+        article.setNotHelpfulCount(0);
+        kbArticleRepository.save(article);
     }
 
     private User initUser(String username, String email, String fullName, String department, String phone, Role role) {
@@ -214,6 +334,7 @@ public class DataInitializer implements CommandLineRunner {
         t.setResolutionNotes(resolutionNotes);
         t.setCreatedAt(createdAt);
         t.setUpdatedAt(LocalDateTime.now());
+        t.setSlaStatus(SlaStatus.WITHIN_SLA);
         Ticket saved = ticketRepository.save(t);
 
         // Audit creation

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -8,8 +8,20 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const { login } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'ROLE_ADMIN') {
+        navigate('/admin/dashboard', { replace: true });
+      } else if (user.role === 'ROLE_AGENT') {
+        navigate('/agent/dashboard', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,10 +33,10 @@ const LoginPage = () => {
     try {
       setError('');
       setSubmitting(true);
-      const user = await login(username, password);
-      if (user.role === 'ROLE_ADMIN') {
+      const loggedUser = await login(username, password);
+      if (loggedUser.role === 'ROLE_ADMIN') {
         navigate('/admin/dashboard');
-      } else if (user.role === 'ROLE_AGENT') {
+      } else if (loggedUser.role === 'ROLE_AGENT') {
         navigate('/agent/dashboard');
       } else {
         navigate('/dashboard');

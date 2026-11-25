@@ -6,6 +6,11 @@ export const categoryService = {
     return response.data;
   },
 
+  getCategories: async () => {
+    const response = await api.get('/categories');
+    return response.data;
+  },
+
   getAllCategories: async () => {
     const response = await api.get('/categories/all');
     return response.data;
@@ -24,5 +29,7 @@ export const categoryService = {
   deleteCategory: async (id) => {
     const response = await api.delete(`/categories/${id}`);
     return response.data;
-  }
+  },
 };
+
+export default categoryService;

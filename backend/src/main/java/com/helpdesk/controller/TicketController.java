@@ -6,9 +6,11 @@ import com.helpdesk.entity.TicketStatus;
 import com.helpdesk.service.TicketService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -39,6 +41,28 @@ public class TicketController {
         return ResponseEntity.ok(ApiResponse.success(tickets));
     }
 
+    @GetMapping("/paged")
+    public ResponseEntity<ApiResponse<PageResponse<TicketResponse>>> searchTicketsPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            @RequestParam(required = false) TicketStatus status,
+            @RequestParam(required = false) TicketPriority priority,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) Boolean assignedToMe,
+            @RequestParam(required = false) Boolean myTicketsOnly) {
+
+        PageResponse<TicketResponse> pageResponse = ticketService.searchTicketsPaged(
+                page, size, sortBy, sortDirection, status, priority, categoryId,
+                startDate, endDate, query, assignedToMe, myTicketsOnly
+        );
+        return ResponseEntity.ok(ApiResponse.success(pageResponse));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<TicketDetailResponse>> getTicketDetail(@PathVariable Long id) {
         TicketDetailResponse response = ticketService.getTicketDetail(id);
@@ -67,6 +91,14 @@ public class TicketController {
             @RequestParam TicketPriority priority) {
         TicketResponse response = ticketService.updatePriority(id, priority);
         return ResponseEntity.ok(ApiResponse.success("Ticket priority updated successfully", response));
+    }
+
+    @PostMapping("/{id}/reopen")
+    public ResponseEntity<ApiResponse<TicketResponse>> reopenTicket(
+            @PathVariable Long id,
+            @Valid @RequestBody ReopenTicketRequest request) {
+        TicketResponse response = ticketService.reopenTicket(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Ticket reopened successfully", response));
     }
 
     @PostMapping("/{id}/comments")

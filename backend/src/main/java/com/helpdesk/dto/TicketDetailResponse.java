@@ -7,13 +7,17 @@ public class TicketDetailResponse {
     private TicketResponse ticket;
     private List<CommentDto> comments = new ArrayList<>();
     private List<HistoryDto> history = new ArrayList<>();
+    private List<AttachmentDto> attachments = new ArrayList<>();
+    private TicketFeedbackDto feedback;
 
     public TicketDetailResponse() {}
 
-    public TicketDetailResponse(TicketResponse ticket, List<CommentDto> comments, List<HistoryDto> history) {
+    public TicketDetailResponse(TicketResponse ticket, List<CommentDto> comments, List<HistoryDto> history, List<AttachmentDto> attachments, TicketFeedbackDto feedback) {
         this.ticket = ticket;
         this.comments = comments;
         this.history = history;
+        this.attachments = attachments;
+        this.feedback = feedback;
     }
 
     public TicketResponse getTicket() {
@@ -38,5 +42,21 @@ public class TicketDetailResponse {
 
     public void setHistory(List<HistoryDto> history) {
         this.history = history;
+    }
+
+    public List<AttachmentDto> getAttachments() {
+        return attachments;
+    }
+
+    public void setAttachments(List<AttachmentDto> attachments) {
+        this.attachments = attachments;
+    }
+
+    public TicketFeedbackDto getFeedback() {
+        return feedback;
+    }
+
+    public void setFeedback(TicketFeedbackDto feedback) {
+        this.feedback = feedback;
     }
 }

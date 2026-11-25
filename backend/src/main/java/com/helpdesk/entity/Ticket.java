@@ -43,6 +43,39 @@ public class Ticket {
     @Column(name = "resolution_notes", columnDefinition = "TEXT")
     private String resolutionNotes;
 
+    // SLA & Escalation fields
+    @Column(name = "response_deadline")
+    private LocalDateTime responseDeadline;
+
+    @Column(name = "resolution_deadline")
+    private LocalDateTime resolutionDeadline;
+
+    @Column(name = "first_responded_at")
+    private LocalDateTime firstRespondedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sla_status", nullable = false, length = 20)
+    private SlaStatus slaStatus = SlaStatus.WITHIN_SLA;
+
+    @Column(name = "sla_breached", nullable = false)
+    private boolean slaBreached = false;
+
+    @Column(name = "escalated", nullable = false)
+    private boolean escalated = false;
+
+    @Column(name = "escalated_at")
+    private LocalDateTime escalatedAt;
+
+    // Reopening fields
+    @Column(name = "reopened", nullable = false)
+    private boolean reopened = false;
+
+    @Column(name = "reopened_at")
+    private LocalDateTime reopenedAt;
+
+    @Column(name = "reopening_reason", columnDefinition = "TEXT")
+    private String reopeningReason;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -68,6 +101,9 @@ public class Ticket {
         }
         if (this.status == null) {
             this.status = TicketStatus.OPEN;
+        }
+        if (this.slaStatus == null) {
+            this.slaStatus = SlaStatus.WITHIN_SLA;
         }
     }
 
@@ -154,6 +190,86 @@ public class Ticket {
 
     public void setResolutionNotes(String resolutionNotes) {
         this.resolutionNotes = resolutionNotes;
+    }
+
+    public LocalDateTime getResponseDeadline() {
+        return responseDeadline;
+    }
+
+    public void setResponseDeadline(LocalDateTime responseDeadline) {
+        this.responseDeadline = responseDeadline;
+    }
+
+    public LocalDateTime getResolutionDeadline() {
+        return resolutionDeadline;
+    }
+
+    public void setResolutionDeadline(LocalDateTime resolutionDeadline) {
+        this.resolutionDeadline = resolutionDeadline;
+    }
+
+    public LocalDateTime getFirstRespondedAt() {
+        return firstRespondedAt;
+    }
+
+    public void setFirstRespondedAt(LocalDateTime firstRespondedAt) {
+        this.firstRespondedAt = firstRespondedAt;
+    }
+
+    public SlaStatus getSlaStatus() {
+        return slaStatus;
+    }
+
+    public void setSlaStatus(SlaStatus slaStatus) {
+        this.slaStatus = slaStatus;
+    }
+
+    public boolean isSlaBreached() {
+        return slaBreached;
+    }
+
+    public void setSlaBreached(boolean slaBreached) {
+        this.slaBreached = slaBreached;
+    }
+
+    public boolean isEscalated() {
+        return escalated;
+    }
+
+    public void setEscalated(boolean escalated) {
+        this.escalated = escalated;
+    }
+
+    public LocalDateTime getEscalatedAt() {
+        return escalatedAt;
+    }
+
+    public void setEscalatedAt(LocalDateTime escalatedAt) {
+        this.escalatedAt = escalatedAt;
+    }
+
+    public boolean isReopened() {
+        return reopened;
+    }
+
+    public void setReopened(boolean reopened) {
+        this.reopened = reopened;
+    }
+
+    public LocalDateTime getReopenedAt() {
+        return reopenedAt;
+    }
+
+    public void setReopenedAt(LocalDateTime reopenedAt) {
+        this.reopenedAt = reopenedAt;
+    }
+
+    public String getReopeningReason() {
+        return reopeningReason;
+    }
+
+    public void setReopeningReason(String reopeningReason) {
+        this.reopeningReason = reopeningReason;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -18,6 +18,13 @@ import CategoryManagementPage from '../pages/admin/CategoryManagementPage';
 import ReportsPage from '../pages/admin/ReportsPage';
 import UserProfilePage from '../pages/profile/UserProfilePage';
 
+// ITSM V2 Advanced Pages
+import KbListPage from '../pages/kb/KbListPage';
+import KbDetailPage from '../pages/kb/KbDetailPage';
+import SlaManagementPage from '../pages/admin/SlaManagementPage';
+import AnnouncementManagementPage from '../pages/admin/AnnouncementManagementPage';
+import AuditLogsPage from '../pages/admin/AuditLogsPage';
+
 // Protected Route Guard
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -75,6 +82,10 @@ const AppRoutes = () => {
         <Route path="tickets/new" element={<CreateTicketPage />} />
         <Route path="tickets/:id" element={<TicketDetailPage />} />
         <Route path="profile" element={<UserProfilePage />} />
+
+        {/* Knowledge Base Self-Service */}
+        <Route path="kb" element={<KbListPage />} />
+        <Route path="kb/:id" element={<KbDetailPage />} />
 
         {/* Employee Dashboard */}
         <Route
@@ -134,6 +145,30 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
               <ReportsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/sla"
+          element={
+            <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
+              <SlaManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/announcements"
+          element={
+            <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
+              <AnnouncementManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/audit-logs"
+          element={
+            <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
+              <AuditLogsPage />
             </ProtectedRoute>
           }
         />

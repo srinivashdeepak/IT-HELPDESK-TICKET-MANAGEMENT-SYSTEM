@@ -6,6 +6,11 @@ export const ticketService = {
     return response.data;
   },
 
+  getPagedTickets: async (params = {}) => {
+    const response = await api.get('/tickets/paged', { params });
+    return response.data;
+  },
+
   getTicketById: async (id) => {
     const response = await api.get(`/tickets/${id}`);
     return response.data;
@@ -31,8 +36,15 @@ export const ticketService = {
     return response.data;
   },
 
+  reopenTicket: async (id, reason) => {
+    const response = await api.post(`/tickets/${id}/reopen`, { reason });
+    return response.data;
+  },
+
   addComment: async (id, commentText, internal = false) => {
     const response = await api.post(`/tickets/${id}/comments`, { commentText, internal });
     return response.data;
-  }
+  },
 };
+
+export default ticketService;

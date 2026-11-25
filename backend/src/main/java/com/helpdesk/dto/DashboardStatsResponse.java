@@ -13,9 +13,14 @@ public class DashboardStatsResponse {
     private long closedTickets;
     private long criticalTickets;
     private long highTickets;
+    private long overdueTickets;
     private double averageResolutionHours;
+    private double averageFirstResponseHours;
+    private double slaComplianceRate;
     private long myTickets;
     private Map<String, Long> categoryDistribution = new HashMap<>();
+    private Map<String, Long> priorityDistribution = new HashMap<>();
+    private Map<String, Long> monthlyTrends = new HashMap<>();
 
     public DashboardStatsResponse() {}
 
@@ -91,12 +96,36 @@ public class DashboardStatsResponse {
         this.highTickets = highTickets;
     }
 
+    public long getOverdueTickets() {
+        return overdueTickets;
+    }
+
+    public void setOverdueTickets(long overdueTickets) {
+        this.overdueTickets = overdueTickets;
+    }
+
     public double getAverageResolutionHours() {
         return averageResolutionHours;
     }
 
     public void setAverageResolutionHours(double averageResolutionHours) {
         this.averageResolutionHours = averageResolutionHours;
+    }
+
+    public double getAverageFirstResponseHours() {
+        return averageFirstResponseHours;
+    }
+
+    public void setAverageFirstResponseHours(double averageFirstResponseHours) {
+        this.averageFirstResponseHours = averageFirstResponseHours;
+    }
+
+    public double getSlaComplianceRate() {
+        return slaComplianceRate;
+    }
+
+    public void setSlaComplianceRate(double slaComplianceRate) {
+        this.slaComplianceRate = slaComplianceRate;
     }
 
     public long getMyTickets() {
@@ -113,5 +142,21 @@ public class DashboardStatsResponse {
 
     public void setCategoryDistribution(Map<String, Long> categoryDistribution) {
         this.categoryDistribution = categoryDistribution;
+    }
+
+    public Map<String, Long> getPriorityDistribution() {
+        return priorityDistribution;
+    }
+
+    public void setPriorityDistribution(Map<String, Long> priorityDistribution) {
+        this.priorityDistribution = priorityDistribution;
+    }
+
+    public Map<String, Long> getMonthlyTrends() {
+        return monthlyTrends;
+    }
+
+    public void setMonthlyTrends(Map<String, Long> monthlyTrends) {
+        this.monthlyTrends = monthlyTrends;
     }
 }

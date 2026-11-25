@@ -4,6 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { ticketService } from '../../services/ticketService';
 import StatusBadge from '../../components/StatusBadge';
 import PriorityBadge from '../../components/PriorityBadge';
+import SlaBadge from '../../components/SlaBadge';
+import AnnouncementBanner from '../../components/AnnouncementBanner';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const AgentDashboard = () => {
@@ -69,6 +71,9 @@ const AgentDashboard = () => {
 
   return (
     <div>
+      {/* Active System Announcements Alert Banner */}
+      <AnnouncementBanner />
+
       {/* Page Title */}
       <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
         <div>
@@ -77,8 +82,11 @@ const AgentDashboard = () => {
             Specialist: <span className="fw-semibold text-dark">{user?.fullName}</span> | Queue: <span className="text-dark">{user?.department}</span>
           </p>
         </div>
-        <div>
-          <Link to="/tickets" className="btn btn-outline-secondary btn-sm me-2">
+        <div className="d-flex gap-2">
+          <Link to="/kb" className="btn btn-outline-secondary btn-sm">
+            <i className="bi bi-book me-1"></i> Knowledge Base
+          </Link>
+          <Link to="/tickets" className="btn btn-outline-secondary btn-sm">
             <i className="bi bi-stack me-1"></i> Full Queue
           </Link>
           <Link to="/tickets/new" className="btn btn-primary-enterprise btn-sm">
@@ -183,8 +191,8 @@ const AgentDashboard = () => {
                     <th>Category</th>
                     <th>Priority</th>
                     <th>Status</th>
+                    <th>SLA Status</th>
                     <th>Employee</th>
-                    <th>Assigned Date</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -212,11 +220,11 @@ const AgentDashboard = () => {
                         <StatusBadge status={ticket.status} />
                       </td>
                       <td>
+                        <SlaBadge status={ticket.slaStatus} deadline={ticket.resolutionDeadline} isBreached={ticket.slaBreached} />
+                      </td>
+                      <td>
                         <div className="small fw-medium text-dark">{ticket.createdByName}</div>
                         <div className="text-muted" style={{ fontSize: '0.72rem' }}>{ticket.createdByDepartment}</div>
-                      </td>
-                      <td className="text-muted small">
-                        {new Date(ticket.createdAt).toLocaleDateString()}
                       </td>
                       <td>
                         <Link to={`/tickets/${ticket.id}`} className="btn btn-sm btn-primary-enterprise py-1 px-2">
@@ -247,8 +255,8 @@ const AgentDashboard = () => {
                     <th>Issue Summary</th>
                     <th>Category</th>
                     <th>Priority</th>
+                    <th>SLA Status</th>
                     <th>Employee</th>
-                    <th>Logged At</th>
                     <th>Triage Action</th>
                   </tr>
                 </thead>
@@ -273,11 +281,11 @@ const AgentDashboard = () => {
                         <PriorityBadge priority={ticket.priority} />
                       </td>
                       <td>
+                        <SlaBadge status={ticket.slaStatus} deadline={ticket.resolutionDeadline} isBreached={ticket.slaBreached} />
+                      </td>
+                      <td>
                         <div className="small fw-medium text-dark">{ticket.createdByName}</div>
                         <div className="text-muted" style={{ fontSize: '0.72rem' }}>{ticket.createdByDepartment}</div>
-                      </td>
-                      <td className="text-muted small">
-                        {new Date(ticket.createdAt).toLocaleDateString()}
                       </td>
                       <td>
                         <div className="d-flex gap-2">

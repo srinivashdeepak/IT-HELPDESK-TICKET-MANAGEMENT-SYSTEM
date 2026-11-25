@@ -5,6 +5,7 @@ import { categoryService } from '../../services/categoryService';
 import { useAuth } from '../../context/AuthContext';
 import StatusBadge from '../../components/StatusBadge';
 import PriorityBadge from '../../components/PriorityBadge';
+import SlaBadge from '../../components/SlaBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const TicketListPage = () => {
@@ -21,7 +22,15 @@ const TicketListPage = () => {
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
   const [priorityFilter, setPriorityFilter] = useState(searchParams.get('priority') || '');
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get('category') || '');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [assignedOnly, setAssignedOnly] = useState(searchParams.get('assignedToMe') === 'true');
+
+  // Pagination State
+  const [page, setPage] = useState(0);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
 
   useEffect(() => {
     loadCategories();
@@ -29,12 +38,12 @@ const TicketListPage = () => {
 
   useEffect(() => {
     loadTickets();
-  }, [statusFilter, priorityFilter, categoryFilter, assignedOnly]);
+  }, [page, statusFilter, priorityFilter, categoryFilter, assignedOnly]);
 
   const loadCategories = async () => {
     try {
       const res = await categoryService.getActiveCategories();
-      if (res.success) {
+      if (res.success && Array.isArray(res.data)) {
         setCategories(res.data);
       }
     } catch (e) {
@@ -46,19 +55,27 @@ const TicketListPage = () => {
     try {
       setLoading(true);
       setError('');
-      const params = {};
+      const params = {
+        page,
+        size: pageSize,
+      };
       if (statusFilter) params.status = statusFilter;
       if (priorityFilter) params.priority = priorityFilter;
       if (categoryFilter) params.categoryId = categoryFilter;
       if (searchQuery.trim()) params.query = searchQuery.trim();
       if (assignedOnly) params.assignedToMe = true;
+      if (startDate) params.startDate = new Date(startDate).toISOString();
+      if (endDate) params.endDate = new Date(endDate + 'T23:59:59').toISOString();
 
-      const res = await ticketService.getTickets(params);
-      if (res.success) {
-        setTickets(res.data);
+      const res = await ticketService.getPagedTickets(params);
+      if (res.success && res.data) {
+        setTickets(Array.isArray(res.data.content) ? res.data.content : []);
+        setTotalPages(res.data.totalPages || 1);
+        setTotalElements(res.data.totalElements || 0);
       }
     } catch (err) {
       setError('Failed to fetch tickets');
+      setTickets([]);
     } finally {
       setLoading(false);
     }
@@ -66,6 +83,7 @@ const TicketListPage = () => {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
+    setPage(0);
     loadTickets();
   };
 
@@ -74,7 +92,10 @@ const TicketListPage = () => {
     setStatusFilter('');
     setPriorityFilter('');
     setCategoryFilter('');
+    setStartDate('');
+    setEndDate('');
     setAssignedOnly(false);
+    setPage(0);
   };
 
   return (
@@ -91,7 +112,10 @@ const TicketListPage = () => {
               : 'Enterprise queue of all technical support, access, and infrastructure requests'}
           </p>
         </div>
-        <div>
+        <div className="d-flex align-items-center gap-2">
+          <span className="badge bg-light text-secondary border p-2 small">
+            Total Tickets: {totalElements}
+          </span>
           <Link to="/tickets/new" className="btn btn-primary-enterprise d-inline-flex align-items-center gap-2">
             <i className="bi bi-plus-lg"></i> {isEmployee ? 'Create Ticket' : 'Log New Ticket'}
           </Link>
@@ -108,7 +132,7 @@ const TicketListPage = () => {
       <div className="card-enterprise p-3 mb-4">
         <form onSubmit={handleSearchSubmit} className="row g-2 align-items-center">
           {/* Search input */}
-          <div className="col-12 col-md-4">
+          <div className="col-12 col-md-3">
             <div className="input-group">
               <span className="input-group-text bg-white text-muted border-end-0">
                 <i className="bi bi-search"></i>
@@ -116,22 +140,22 @@ const TicketListPage = () => {
               <input
                 type="text"
                 className="form-control border-start-0"
-                placeholder="Search ticket code, title..."
+                placeholder="Ticket ID, keyword, name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <button type="submit" className="btn btn-outline-secondary">
-                Search
-              </button>
             </div>
           </div>
 
           {/* Status filter */}
           <div className="col-6 col-md-2">
             <select
-              className="form-select"
+              className="form-select form-select-sm"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(0);
+              }}
             >
               <option value="">All Statuses</option>
               <option value="OPEN">Open</option>
@@ -146,9 +170,12 @@ const TicketListPage = () => {
           {/* Priority filter */}
           <div className="col-6 col-md-2">
             <select
-              className="form-select"
+              className="form-select form-select-sm"
               value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
+              onChange={(e) => {
+                setPriorityFilter(e.target.value);
+                setPage(0);
+              }}
             >
               <option value="">All Priorities</option>
               <option value="LOW">Low</option>
@@ -161,9 +188,12 @@ const TicketListPage = () => {
           {/* Category filter */}
           <div className="col-6 col-md-2">
             <select
-              className="form-select"
+              className="form-select form-select-sm"
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setPage(0);
+              }}
             >
               <option value="">All Categories</option>
               {categories.map((c) => (
@@ -174,123 +204,139 @@ const TicketListPage = () => {
             </select>
           </div>
 
-          {/* Reset button */}
-          <div className="col-6 col-md-2 d-flex gap-2">
+          {/* Date range inputs */}
+          <div className="col-6 col-md-3 d-flex gap-1">
+            <input
+              type="date"
+              className="form-control form-control-sm"
+              title="Start Date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setPage(0);
+              }}
+            />
+            <input
+              type="date"
+              className="form-control form-control-sm"
+              title="End Date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPage(0);
+              }}
+            />
+          </div>
+
+          {/* Action buttons */}
+          <div className="col-12 d-flex justify-content-end gap-2 mt-2">
             {(isAgent || isAdmin) && (
               <button
                 type="button"
-                className={`btn btn-sm ${assignedOnly ? 'btn-primary' : 'btn-outline-secondary'} flex-grow-1`}
-                onClick={() => setAssignedOnly(!assignedOnly)}
+                className={`btn btn-sm ${assignedOnly ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => {
+                  setAssignedOnly(!assignedOnly);
+                  setPage(0);
+                }}
                 title="Filter tickets assigned to me"
               >
-                <i className="bi bi-person-check me-1"></i> Mine
+                <i className="bi bi-person-check me-1"></i> Assigned to Me
               </button>
             )}
             <button
+              type="submit"
+              className="btn btn-sm btn-primary-enterprise"
+            >
+              <i className="bi bi-funnel me-1"></i> Filter
+            </button>
+            <button
               type="button"
-              className="btn btn-sm btn-outline-secondary flex-grow-1"
+              className="btn btn-sm btn-outline-secondary"
               onClick={handleResetFilters}
               title="Reset all filters"
             >
-              <i className="bi bi-arrow-counterclockwise"></i> Reset
+              <i className="bi bi-arrow-counterclockwise me-1"></i> Reset
             </button>
           </div>
         </form>
       </div>
 
-      {/* Ticket List Table */}
-      <div className="card-enterprise">
-        <div className="p-3 border-bottom d-flex justify-content-between align-items-center">
-          <span className="fw-semibold text-secondary small">
-            Showing <strong className="text-dark">{tickets.length}</strong> tickets
-          </span>
+      {/* Tickets Table */}
+      {loading ? (
+        <LoadingSpinner message="Querying ITSM queue..." />
+      ) : !tickets || tickets.length === 0 ? (
+        <div className="card-enterprise text-center py-5">
+          <i className="bi bi-ticket-perforated fs-1 text-muted opacity-50 mb-2"></i>
+          <h5 className="fw-semibold text-dark">No tickets found</h5>
+          <p className="text-muted small mb-3">No incident records matched your active filter criteria.</p>
+          <button className="btn btn-sm btn-outline-secondary" onClick={handleResetFilters}>
+            Clear Filters
+          </button>
         </div>
-
-        {loading ? (
-          <LoadingSpinner message="Loading ticket queue..." />
-        ) : tickets.length === 0 ? (
-          <div className="text-center py-5">
-            <div className="text-muted mb-2" style={{ fontSize: '2.5rem' }}>
-              <i className="bi bi-search"></i>
-            </div>
-            <h6 className="fw-semibold text-secondary">No matching tickets found</h6>
-            <p className="text-muted small mb-3">
-              Try adjusting your search terms or clearing the filters above.
-            </p>
-            <button onClick={handleResetFilters} className="btn btn-sm btn-outline-primary">
-              Clear All Filters
-            </button>
-          </div>
-        ) : (
+      ) : (
+        <div className="card-enterprise">
           <div className="table-responsive">
-            <table className="table-enterprise">
-              <thead>
+            <table className="table table-hover align-middle mb-0">
+              <thead className="table-light">
                 <tr>
-                  <th>Ticket ID</th>
-                  <th>Title & Summary</th>
-                  <th>Category</th>
-                  <th>Priority</th>
-                  <th>Status</th>
-                  <th>Reported By</th>
-                  <th>Assignee</th>
-                  <th>Logged Date</th>
-                  <th>Action</th>
+                  <th className="small text-muted text-uppercase" style={{ width: '120px' }}>Ticket Code</th>
+                  <th className="small text-muted text-uppercase">Summary</th>
+                  <th className="small text-muted text-uppercase">Category</th>
+                  <th className="small text-muted text-uppercase">Priority</th>
+                  <th className="small text-muted text-uppercase">Status</th>
+                  <th className="small text-muted text-uppercase">SLA Status</th>
+                  <th className="small text-muted text-uppercase">Requester</th>
+                  <th className="small text-muted text-uppercase">Assignee</th>
+                  <th className="small text-muted text-uppercase text-end">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {tickets.map((ticket) => (
-                  <tr key={ticket.id}>
+                {tickets.map((t) => (
+                  <tr key={t.id}>
                     <td>
-                      <Link to={`/tickets/${ticket.id}`} className="ticket-code text-decoration-none">
-                        {ticket.ticketCode}
+                      <Link to={`/tickets/${t.id}`} className="ticket-code text-decoration-none">
+                        {t.ticketCode}
                       </Link>
                     </td>
-                    <td style={{ maxWidth: '280px' }}>
-                      <Link
-                        to={`/tickets/${ticket.id}`}
-                        className="fw-semibold text-dark text-decoration-none d-block text-truncate"
-                      >
-                        {ticket.title}
+                    <td>
+                      <Link to={`/tickets/${t.id}`} className="text-decoration-none text-dark fw-medium small d-block text-truncate" style={{ maxWidth: '280px' }}>
+                        {t.title}
                       </Link>
-                      <span className="text-muted small d-block text-truncate">
-                        {ticket.description}
+                      <span className="text-muted" style={{ fontSize: '0.72rem' }}>
+                        Created {new Date(t.createdAt).toLocaleDateString()}
                       </span>
                     </td>
                     <td>
-                      <span className="badge bg-light text-secondary border">
-                        {ticket.categoryName}
+                      <span className="badge bg-light text-secondary border small">
+                        {t.categoryName}
                       </span>
                     </td>
                     <td>
-                      <PriorityBadge priority={ticket.priority} />
+                      <PriorityBadge priority={t.priority} />
                     </td>
                     <td>
-                      <StatusBadge status={ticket.status} />
+                      <StatusBadge status={t.status} />
                     </td>
                     <td>
-                      <div className="small fw-medium text-dark">{ticket.createdByName}</div>
-                      <div className="text-muted" style={{ fontSize: '0.72rem' }}>
-                        {ticket.createdByDepartment}
-                      </div>
+                      <SlaBadge status={t.slaStatus} deadline={t.resolutionDeadline} isBreached={t.slaBreached} />
                     </td>
                     <td>
-                      {ticket.assignedToName ? (
-                        <div className="small fw-medium text-dark">
-                          <i className="bi bi-headset me-1 text-primary"></i>
-                          {ticket.assignedToName}
+                      <div className="small fw-semibold text-dark">{t.createdByName}</div>
+                      <div className="text-muted" style={{ fontSize: '0.72rem' }}>{t.createdByDepartment}</div>
+                    </td>
+                    <td>
+                      {t.assignedToName ? (
+                        <div className="small text-dark fw-medium">
+                          <i className="bi bi-person me-1 text-primary"></i>
+                          {t.assignedToName}
                         </div>
                       ) : (
-                        <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
-                          Unassigned
-                        </span>
+                        <span className="badge bg-light text-muted border">Unassigned</span>
                       )}
                     </td>
-                    <td className="text-muted small">
-                      {new Date(ticket.createdAt).toLocaleDateString()}
-                    </td>
-                    <td>
-                      <Link to={`/tickets/${ticket.id}`} className="btn btn-sm btn-light border py-1 px-2 text-primary">
-                        Details <i className="bi bi-arrow-right-short"></i>
+                    <td className="text-end">
+                      <Link to={`/tickets/${t.id}`} className="btn btn-sm btn-outline-primary py-1 px-2">
+                        View
                       </Link>
                     </td>
                   </tr>
@@ -298,8 +344,33 @@ const TicketListPage = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+
+          {/* Pagination Footer */}
+          {totalPages > 1 && (
+            <div className="card-footer bg-white d-flex justify-content-between align-items-center py-3">
+              <span className="small text-muted">
+                Page {page + 1} of {totalPages} ({totalElements} total tickets)
+              </span>
+              <div className="btn-group btn-group-sm">
+                <button
+                  className="btn btn-outline-secondary"
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  <i className="bi bi-chevron-left me-1"></i> Prev
+                </button>
+                <button
+                  className="btn btn-outline-secondary"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next <i className="bi bi-chevron-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -12,6 +12,11 @@ export const userService = {
     return response.data;
   },
 
+  getWorkloads: async () => {
+    const response = await api.get('/users/workloads');
+    return response.data;
+  },
+
   getUserById: async (id) => {
     const response = await api.get(`/users/${id}`);
     return response.data;
@@ -27,8 +32,25 @@ export const userService = {
     return response.data;
   },
 
+  updateProfile: async (profileData) => {
+    const response = await api.put('/users/profile', profileData);
+    return response.data;
+  },
+
+  changePassword: async (passwordData) => {
+    const response = await api.post('/users/change-password', passwordData);
+    return response.data;
+  },
+
+  updateAvailability: async (userId, status) => {
+    const response = await api.patch(`/users/${userId}/availability`, { status });
+    return response.data;
+  },
+
   toggleUserStatus: async (id) => {
     const response = await api.patch(`/users/${id}/status`);
     return response.data;
-  }
+  },
 };
+
+export default userService;

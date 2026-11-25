@@ -24,7 +24,7 @@ const Sidebar = () => {
 
       {/* Navigation Sections */}
       <div className="d-flex flex-column flex-grow-1 overflow-auto py-2">
-        {/* Common / Overview */}
+        {/* Main Menu */}
         <div className="sidebar-menu-category">Main Menu</div>
 
         {isEmployee && (
@@ -73,7 +73,29 @@ const Sidebar = () => {
               <i className="bi bi-tags"></i> Issue Categories
             </NavLink>
             <NavLink to="/admin/reports" className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}>
-              <i className="bi bi-bar-chart-line"></i> Reports & SLAs
+              <i className="bi bi-bar-chart-line"></i> Analytics & Reports
+            </NavLink>
+          </>
+        )}
+
+        {/* ITSM Knowledge & Solutions */}
+        <div className="sidebar-menu-category mt-3">Self Service</div>
+        <NavLink to="/kb" className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}>
+          <i className="bi bi-book"></i> Knowledge Base
+        </NavLink>
+
+        {/* Admin Governance */}
+        {isAdmin && (
+          <>
+            <div className="sidebar-menu-category mt-3">ITSM Governance</div>
+            <NavLink to="/admin/sla" className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}>
+              <i className="bi bi-stopwatch"></i> SLA Configuration
+            </NavLink>
+            <NavLink to="/admin/announcements" className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}>
+              <i className="bi bi-megaphone"></i> Announcements
+            </NavLink>
+            <NavLink to="/admin/audit-logs" className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}>
+              <i className="bi bi-shield-check"></i> Audit Logs
             </NavLink>
           </>
         )}

@@ -4,12 +4,14 @@ import { analyticsService } from '../../services/analyticsService';
 import { ticketService } from '../../services/ticketService';
 import StatusBadge from '../../components/StatusBadge';
 import PriorityBadge from '../../components/PriorityBadge';
+import AnnouncementBanner from '../../components/AnnouncementBanner';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [recentTickets, setRecentTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -38,13 +40,28 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleExportCsv = async () => {
+    try {
+      setExporting(true);
+      await analyticsService.downloadCsvReport();
+    } catch (err) {
+      alert('Failed to export CSV report');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (loading) return <LoadingSpinner message="Aggregating corporate IT metrics..." />;
 
   const categoryDistribution = stats?.categoryDistribution || {};
   const total = stats?.totalTickets || 1;
+  const slaCompliance = stats?.slaComplianceRate ?? 100;
 
   return (
     <div>
+      {/* Active System Announcements Alert Banner */}
+      <AnnouncementBanner />
+
       {/* Title & Actions */}
       <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
         <div>
@@ -53,12 +70,19 @@ const AdminDashboard = () => {
             Real-time operations, service level agreements, and support workload overview
           </p>
         </div>
-        <div className="d-flex gap-2">
+        <div className="d-flex gap-2 flex-wrap">
+          <button
+            onClick={handleExportCsv}
+            disabled={exporting}
+            className="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+          >
+            <i className="bi bi-filetype-csv"></i> {exporting ? 'Generating CSV...' : 'Export CSV Report'}
+          </button>
+          <Link to="/admin/sla" className="btn btn-sm btn-outline-danger">
+            <i className="bi bi-stopwatch me-1"></i> SLA Rules
+          </Link>
           <Link to="/admin/users" className="btn btn-sm btn-outline-secondary">
             <i className="bi bi-people me-1"></i> User Directory
-          </Link>
-          <Link to="/admin/reports" className="btn btn-sm btn-primary-enterprise">
-            <i className="bi bi-file-earmark-bar-graph me-1"></i> SLA Reports
           </Link>
         </div>
       </div>
@@ -94,18 +118,20 @@ const AdminDashboard = () => {
         </div>
         <div className="col-12 col-sm-6 col-xl-2">
           <div className="metric-card">
-            <div className="metric-card-title">Resolved & Closed</div>
-            <div className="metric-card-value text-success">
-              {(stats?.resolvedTickets || 0) + (stats?.closedTickets || 0)}
+            <div className="metric-card-title">Overdue Breaches</div>
+            <div className={`metric-card-value ${(stats?.overdueTickets || 0) > 0 ? 'text-danger' : 'text-success'}`}>
+              {stats?.overdueTickets || 0}
             </div>
-            <div className="metric-card-subtitle">Completed tickets</div>
+            <div className="metric-card-subtitle">SLA turnaround breached</div>
           </div>
         </div>
         <div className="col-12 col-sm-6 col-xl-2">
           <div className="metric-card">
-            <div className="metric-card-title">Critical P1</div>
-            <div className="metric-card-value text-danger">{stats?.criticalTickets || 0}</div>
-            <div className="metric-card-subtitle">Severe SLA risk</div>
+            <div className="metric-card-title">SLA Compliance</div>
+            <div className={`metric-card-value ${slaCompliance >= 90 ? 'text-success' : 'text-danger'}`}>
+              {slaCompliance}%
+            </div>
+            <div className="metric-card-subtitle">Within service target</div>
           </div>
         </div>
         <div className="col-12 col-sm-6 col-xl-2">
@@ -114,7 +140,7 @@ const AdminDashboard = () => {
             <div className="metric-card-value" style={{ fontSize: '1.45rem' }}>
               {stats?.averageResolutionHours || 0} <span className="text-muted fs-6">hrs</span>
             </div>
-            <div className="metric-card-subtitle">Turnaround time</div>
+            <div className="metric-card-subtitle">Mean turnaround time</div>
           </div>
         </div>
       </div>
@@ -174,55 +200,55 @@ const AdminDashboard = () => {
                 <div className="col-12 col-md-6">
                   <div className="p-3 border rounded bg-light">
                     <h6 className="fw-bold text-dark mb-1">
-                      <i className="bi bi-person-gear text-primary me-2"></i> User Directory
+                      <i className="bi bi-stopwatch text-danger me-2"></i> SLA Policies
+                    </h6>
+                    <p className="text-muted small mb-3">
+                      Define response & resolution target hours and automatic escalation alerts.
+                    </p>
+                    <Link to="/admin/sla" className="btn btn-sm btn-outline-danger">
+                      Configure SLA Targets <i className="bi bi-arrow-right"></i>
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="col-12 col-md-6">
+                  <div className="p-3 border rounded bg-light">
+                    <h6 className="fw-bold text-dark mb-1">
+                      <i className="bi bi-megaphone text-info me-2"></i> Announcements
+                    </h6>
+                    <p className="text-muted small mb-3">
+                      Broadcast maintenance downtime banners and security advisories to users.
+                    </p>
+                    <Link to="/admin/announcements" className="btn btn-sm btn-outline-info">
+                      Broadcast Alerts <i className="bi bi-arrow-right"></i>
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="col-12 col-md-6">
+                  <div className="p-3 border rounded bg-light">
+                    <h6 className="fw-bold text-dark mb-1">
+                      <i className="bi bi-shield-check text-success me-2"></i> Audit History
+                    </h6>
+                    <p className="text-muted small mb-3">
+                      Review chronological audit events, security modifications, and escalations.
+                    </p>
+                    <Link to="/admin/audit-logs" className="btn btn-sm btn-outline-success">
+                      View Audit Trail <i className="bi bi-arrow-right"></i>
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="col-12 col-md-6">
+                  <div className="p-3 border rounded bg-light">
+                    <h6 className="fw-bold text-dark mb-1">
+                      <i className="bi bi-people text-primary me-2"></i> User Directory
                     </h6>
                     <p className="text-muted small mb-3">
                       Provision support agents, manage employee access privileges, and toggle active states.
                     </p>
                     <Link to="/admin/users" className="btn btn-sm btn-outline-primary">
                       Manage Accounts & Agents <i className="bi bi-arrow-right"></i>
-                    </Link>
-                  </div>
-                </div>
-
-                <div className="col-12 col-md-6">
-                  <div className="p-3 border rounded bg-light">
-                    <h6 className="fw-bold text-dark mb-1">
-                      <i className="bi bi-tags text-success me-2"></i> Ticket Taxonomy
-                    </h6>
-                    <p className="text-muted small mb-3">
-                      Configure service desk categories (Hardware, Software, Network, Cloud, Security).
-                    </p>
-                    <Link to="/admin/categories" className="btn btn-sm btn-outline-success">
-                      Configure Categories <i className="bi bi-arrow-right"></i>
-                    </Link>
-                  </div>
-                </div>
-
-                <div className="col-12 col-md-6">
-                  <div className="p-3 border rounded bg-light">
-                    <h6 className="fw-bold text-dark mb-1">
-                      <i className="bi bi-graph-up text-indigo me-2"></i> SLA & Turnaround Reports
-                    </h6>
-                    <p className="text-muted small mb-3">
-                      Review resolution velocity, agent workloads, and SLA compliance metrics.
-                    </p>
-                    <Link to="/admin/reports" className="btn btn-sm btn-outline-secondary">
-                      View Analytical Reports <i className="bi bi-arrow-right"></i>
-                    </Link>
-                  </div>
-                </div>
-
-                <div className="col-12 col-md-6">
-                  <div className="p-3 border rounded bg-light">
-                    <h6 className="fw-bold text-dark mb-1">
-                      <i className="bi bi-kanban text-warning me-2"></i> Global Dispatch Desk
-                    </h6>
-                    <p className="text-muted small mb-3">
-                      View all open company tickets with filtering, assignment triage, and escalation.
-                    </p>
-                    <Link to="/tickets" className="btn btn-sm btn-outline-warning">
-                      Open Dispatch Queue <i className="bi bi-arrow-right"></i>
                     </Link>
                   </div>
                 </div>

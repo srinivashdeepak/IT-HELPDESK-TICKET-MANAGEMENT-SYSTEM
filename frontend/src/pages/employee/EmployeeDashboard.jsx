@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { ticketService } from '../../services/ticketService';
 import StatusBadge from '../../components/StatusBadge';
 import PriorityBadge from '../../components/PriorityBadge';
+import AnnouncementBanner from '../../components/AnnouncementBanner';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const EmployeeDashboard = () => {
@@ -45,6 +46,9 @@ const EmployeeDashboard = () => {
 
   return (
     <div>
+      {/* Active System Announcements Alert Banner */}
+      <AnnouncementBanner />
+
       {/* Page Header */}
       <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
         <div>
@@ -53,7 +57,10 @@ const EmployeeDashboard = () => {
             Welcome back, <span className="fw-semibold text-dark">{user?.fullName}</span> ({user?.department})
           </p>
         </div>
-        <div>
+        <div className="d-flex gap-2">
+          <Link to="/kb" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">
+            <i className="bi bi-book"></i> Knowledge Base
+          </Link>
           <Link to="/tickets/new" className="btn btn-primary-enterprise d-inline-flex align-items-center gap-2">
             <i className="bi bi-plus-lg"></i> Create Support Ticket
           </Link>

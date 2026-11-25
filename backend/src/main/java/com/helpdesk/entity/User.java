@@ -36,6 +36,16 @@ public class User {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "availability_status", nullable = false, length = 20)
+    private AgentAvailability availabilityStatus = AgentAvailability.AVAILABLE;
+
+    @Column(name = "profile_image", length = 255)
+    private String profileImage;
+
+    @Column(name = "notification_email_enabled", nullable = false)
+    private boolean notificationEmailEnabled = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -54,12 +64,21 @@ public class User {
         this.phone = phone;
         this.role = role;
         this.active = true;
+        this.availabilityStatus = AgentAvailability.AVAILABLE;
+        this.notificationEmailEnabled = true;
     }
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
+        if (this.availabilityStatus == null) {
+            this.availabilityStatus = AgentAvailability.AVAILABLE;
+        }
     }
 
     @PreUpdate
@@ -137,6 +156,30 @@ public class User {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public AgentAvailability getAvailabilityStatus() {
+        return availabilityStatus;
+    }
+
+    public void setAvailabilityStatus(AgentAvailability availabilityStatus) {
+        this.availabilityStatus = availabilityStatus;
+    }
+
+    public String getProfileImage() {
+        return profileImage;
+    }
+
+    public void setProfileImage(String profileImage) {
+        this.profileImage = profileImage;
+    }
+
+    public boolean isNotificationEmailEnabled() {
+        return notificationEmailEnabled;
+    }
+
+    public void setNotificationEmailEnabled(boolean notificationEmailEnabled) {
+        this.notificationEmailEnabled = notificationEmailEnabled;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -1,5 +1,6 @@
 package com.helpdesk.dto;
 
+import com.helpdesk.entity.AgentAvailability;
 import java.time.LocalDateTime;
 
 public class UserDto {
@@ -11,6 +12,8 @@ public class UserDto {
     private String phone;
     private String role;
     private boolean active;
+    private AgentAvailability availabilityStatus = AgentAvailability.AVAILABLE;
+    private boolean notificationEmailEnabled = true;
     private LocalDateTime createdAt;
 
     public UserDto() {}
@@ -89,6 +92,22 @@ public class UserDto {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public AgentAvailability getAvailabilityStatus() {
+        return availabilityStatus;
+    }
+
+    public void setAvailabilityStatus(AgentAvailability availabilityStatus) {
+        this.availabilityStatus = availabilityStatus;
+    }
+
+    public boolean isNotificationEmailEnabled() {
+        return notificationEmailEnabled;
+    }
+
+    public void setNotificationEmailEnabled(boolean notificationEmailEnabled) {
+        this.notificationEmailEnabled = notificationEmailEnabled;
     }
 
     public LocalDateTime getCreatedAt() {

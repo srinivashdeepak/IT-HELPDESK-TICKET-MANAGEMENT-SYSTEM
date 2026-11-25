@@ -1,5 +1,6 @@
 package com.helpdesk.dto;
 
+import com.helpdesk.entity.SlaStatus;
 import com.helpdesk.entity.TicketPriority;
 import com.helpdesk.entity.TicketStatus;
 
@@ -22,10 +23,26 @@ public class TicketResponse {
     private String assignedToName;
     private String assignedToEmail;
     private String resolutionNotes;
+
+    // SLA & Escalation
+    private LocalDateTime responseDeadline;
+    private LocalDateTime resolutionDeadline;
+    private LocalDateTime firstRespondedAt;
+    private SlaStatus slaStatus;
+    private boolean slaBreached;
+    private boolean escalated;
+    private LocalDateTime escalatedAt;
+
+    // Reopen attributes
+    private boolean reopened;
+    private LocalDateTime reopenedAt;
+    private String reopeningReason;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime resolvedAt;
     private int commentCount;
+    private int attachmentCount;
 
     public TicketResponse() {}
 
@@ -157,6 +174,86 @@ public class TicketResponse {
         this.resolutionNotes = resolutionNotes;
     }
 
+    public LocalDateTime getResponseDeadline() {
+        return responseDeadline;
+    }
+
+    public void setResponseDeadline(LocalDateTime responseDeadline) {
+        this.responseDeadline = responseDeadline;
+    }
+
+    public LocalDateTime getResolutionDeadline() {
+        return resolutionDeadline;
+    }
+
+    public void setResolutionDeadline(LocalDateTime resolutionDeadline) {
+        this.resolutionDeadline = resolutionDeadline;
+    }
+
+    public LocalDateTime getFirstRespondedAt() {
+        return firstRespondedAt;
+    }
+
+    public void setFirstRespondedAt(LocalDateTime firstRespondedAt) {
+        this.firstRespondedAt = firstRespondedAt;
+    }
+
+    public SlaStatus getSlaStatus() {
+        return slaStatus;
+    }
+
+    public void setSlaStatus(SlaStatus slaStatus) {
+        this.slaStatus = slaStatus;
+    }
+
+    public boolean isSlaBreached() {
+        return slaBreached;
+    }
+
+    public void setSlaBreached(boolean slaBreached) {
+        this.slaBreached = slaBreached;
+    }
+
+    public boolean isEscalated() {
+        return escalated;
+    }
+
+    public void setEscalated(boolean escalated) {
+        this.escalated = escalated;
+    }
+
+    public LocalDateTime getEscalatedAt() {
+        return escalatedAt;
+    }
+
+    public void setEscalatedAt(LocalDateTime escalatedAt) {
+        this.escalatedAt = escalatedAt;
+    }
+
+    public boolean isReopened() {
+        return reopened;
+    }
+
+    public void setReopened(boolean reopened) {
+        this.reopened = reopened;
+    }
+
+    public LocalDateTime getReopenedAt() {
+        return reopenedAt;
+    }
+
+    public void setReopenedAt(LocalDateTime reopenedAt) {
+        this.reopenedAt = reopenedAt;
+    }
+
+    public String getReopeningReason() {
+        return reopeningReason;
+    }
+
+    public void setReopeningReason(String reopeningReason) {
+        this.reopeningReason = reopeningReason;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -187,5 +284,13 @@ public class TicketResponse {
 
     public void setCommentCount(int commentCount) {
         this.commentCount = commentCount;
+    }
+
+    public int getAttachmentCount() {
+        return attachmentCount;
+    }
+
+    public void setAttachmentCount(int attachmentCount) {
+        this.attachmentCount = attachmentCount;
     }
 }

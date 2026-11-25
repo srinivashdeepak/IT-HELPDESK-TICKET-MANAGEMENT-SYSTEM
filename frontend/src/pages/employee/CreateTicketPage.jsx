@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ticketService } from '../../services/ticketService';
 import { categoryService } from '../../services/categoryService';
+import { kbService } from '../../services/kbService';
+import { attachmentService } from '../../services/attachmentService';
 
 const CreateTicketPage = () => {
   const [categories, setCategories] = useState([]);
@@ -12,6 +14,8 @@ const CreateTicketPage = () => {
     description: '',
   });
 
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [kbSuggestions, setKbSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetchingCats, setFetchingCats] = useState(true);
   const [error, setError] = useState('');
@@ -22,6 +26,27 @@ const CreateTicketPage = () => {
   useEffect(() => {
     loadCategories();
   }, []);
+
+  // Debounced search for Knowledge Base suggestions as user types the title
+  useEffect(() => {
+    if (formData.title.trim().length < 3) {
+      setKbSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await kbService.getSuggestions(formData.title.trim());
+        if (res.data) {
+          setKbSuggestions(res.data);
+        }
+      } catch (e) {
+        // Ignore background suggestions failure
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [formData.title]);
 
   const loadCategories = async () => {
     try {
@@ -62,9 +87,20 @@ const CreateTicketPage = () => {
       });
 
       if (res.success && res.data) {
+        const createdTicketId = res.data.id;
+
+        // If file is selected, upload it
+        if (selectedFile) {
+          try {
+            await attachmentService.uploadAttachment(createdTicketId, selectedFile);
+          } catch (fileErr) {
+            console.error('File upload failed', fileErr);
+          }
+        }
+
         setSuccess(`Ticket ${res.data.ticketCode} logged successfully! Redirecting...`);
         setTimeout(() => {
-          navigate(`/tickets/${res.data.id}`);
+          navigate(`/tickets/${createdTicketId}`);
         }, 1200);
       }
     } catch (err) {
@@ -104,6 +140,29 @@ const CreateTicketPage = () => {
         </div>
       )}
 
+      {/* Live KB Suggestions Alert */}
+      {kbSuggestions.length > 0 && (
+        <div className="alert alert-info border-info-subtle shadow-sm mb-4">
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <i className="bi bi-lightbulb-fill text-warning fs-5"></i>
+            <strong className="small">Suggested Self-Service Guides Found:</strong>
+          </div>
+          <p className="small text-muted mb-2">
+            These published solutions might resolve your issue immediately without waiting for an agent:
+          </p>
+          <ul className="mb-0 small ps-3">
+            {kbSuggestions.map((art) => (
+              <li key={art.id} className="mb-1">
+                <Link to={`/kb/${art.id}`} target="_blank" className="fw-semibold text-primary">
+                  {art.title}
+                </Link>
+                <span className="text-muted ms-2">({art.categoryName})</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="card-enterprise p-4">
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
@@ -114,7 +173,7 @@ const CreateTicketPage = () => {
               type="text"
               name="title"
               className="form-control"
-              placeholder="e.g. Dell external monitor flickers intermittently via USB-C Hub"
+              placeholder="e.g. MacBook Pro M2 battery draining rapidly and overheating"
               value={formData.title}
               onChange={handleChange}
               required
@@ -158,22 +217,22 @@ const CreateTicketPage = () => {
                 onChange={handleChange}
                 required
               >
-                <option value="LOW">Low (Minor inconvenience / question)</option>
-                <option value="MEDIUM">Medium (Normal daily workflow impediment)</option>
-                <option value="HIGH">High (Major blocker for critical task)</option>
-                <option value="CRITICAL">Critical (Company-wide or executive stoppage)</option>
+                <option value="LOW">Low (Turnaround target: 96h)</option>
+                <option value="MEDIUM">Medium (Turnaround target: 48h)</option>
+                <option value="HIGH">High (Turnaround target: 12h)</option>
+                <option value="CRITICAL">Critical (Turnaround target: 4h)</option>
               </select>
             </div>
           </div>
 
-          <div className="mb-4">
+          <div className="mb-3">
             <label className="form-label small fw-semibold text-secondary">
               Detailed Description & Steps to Reproduce <span className="text-danger">*</span>
             </label>
             <textarea
               name="description"
               className="form-control"
-              rows={6}
+              rows={5}
               placeholder="Please describe:
 1. What was happening?
 2. What error messages or diagnostic codes appeared?
@@ -183,6 +242,19 @@ const CreateTicketPage = () => {
               onChange={handleChange}
               required
             ></textarea>
+          </div>
+
+          {/* Screenshot / File Attachment */}
+          <div className="mb-4">
+            <label className="form-label small fw-semibold text-secondary">
+              Attach Screenshot or Log File (Optional)
+            </label>
+            <input
+              type="file"
+              className="form-control form-control-sm"
+              onChange={(e) => setSelectedFile(e.target.files[0])}
+            />
+            <div className="form-text small">Accepted formats: PNG, JPG, PDF, TXT, LOG. Max size: 15MB.</div>
           </div>
 
           <div className="d-flex justify-content-end gap-2 pt-3 border-top">
