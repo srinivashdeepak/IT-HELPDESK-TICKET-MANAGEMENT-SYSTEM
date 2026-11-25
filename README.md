@@ -1,4 +1,6 @@
-# TechDesk Pro - Enterprise IT Helpdesk Ticket Management System
+# IT-HELPDESK-TICKET-MANAGEMENT-SYSTEM
+
+> **TechDesk** is an enterprise IT Helpdesk platform streamlining technical support with automated SLA tracking, breach escalation, RBAC, analytics, and a knowledge base. Built using Java, Spring Boot, Spring Security (JWT), MySQL, and a React.js frontend.
 
 [![Java](https://img.shields.io/badge/Java-17%2B%20%2F%2021%20%2F%2024-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
@@ -257,3 +259,4 @@ When presenting this project in a Java Full Stack Developer interview, key techn
 3. **Internal Diagnostic Segregation**: Regular employees are mathematically prevented by the backend service from viewing or posting internal support staff notes (`is_internal = true`).
 4. **Complete Audit Trail**: Every incident records state changes, assignment delegations, and resolution timestamps into an immutable `ticket_history` log for compliance and turnaround analytics.
 5. **Real Enterprise UI/UX**: Designed without generic AI templates or emojis; uses Bootstrap 5 with custom CSS variables, subtle slate/navy palette, status badges, and sticky responsive navigation inspired by Jira and Linear.
+
